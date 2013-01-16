@@ -1,4 +1,9 @@
 <?php
+/*
+ * Modified for addition of TCAPI support.
+ * Jamie Smith - jamie.g.smith@gmail.com
+ * Search for TCAPI for modification lines and documentation.
+ */
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -40,6 +45,10 @@ define('SCORM_TOC_DISABLED', 3);
 define('SCORM_12', 1);
 define('SCORM_13', 2);
 define('SCORM_AICC', 3);
+/*
+ * Add SCORM_TCAPI
+ */
+define('SCORM_TCAPI', 4);
 
 // List of possible attemptstatusdisplay options.
 define('SCORM_DISPLAY_ATTEMPTSTATUS_NO', 0);
@@ -1145,6 +1154,17 @@ function scorm_version_check($scormversion, $version='') {
             return false;
         }
     }
+    /*
+     * TCAPI - Add check for SCORM_TCAPI
+     */
+    if (empty($version) || $version == SCORM_TCAPI) {
+        if ($scormversion == 'tcapi') {
+            return SCORM_TCAPI;
+        }
+        if (!empty($version)) {
+            return false;
+        }
+    }
     return false;
 }
 
@@ -1293,6 +1313,17 @@ function scorm_dndupload_handle($uploadinfo) {
                 $aiccfound = true;
                 break;
             }
+	        /*
+	         * TCAPI Modification
+	         * Allow for tincan.xml manifest.
+	         */
+            if ($info->pathname == 'tincan.xml') {
+            	$manifestpresent = true;
+            	break;
+            }
+	        /*
+	         * End TCAPI Modification
+	         */
         }
 
         if (!$manifestpresent && !$aiccfound) {

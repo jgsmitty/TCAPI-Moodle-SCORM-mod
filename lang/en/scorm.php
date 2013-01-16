@@ -1,4 +1,9 @@
 <?php
+/*
+ * Modified for addition of TCAPI support.
+ * Jamie Smith - jamie.g.smith@gmail.com
+ * Search for TCAPI for modification lines and documentation.
+ */
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -350,3 +355,23 @@ Handling of Multiple Attempts
 $string['whatgradedesc'] = 'This preference sets the default attempts grading';
 $string['width'] = 'Width';
 $string['window'] = 'Window';
+
+// TCAPI modifications/additions
+$string['maximumattempts_help'] = 'This setting enables the number of attempts to be restricted. It is only applicable for SCORM 1.2, TCAPI, and AICC packages.';
+$string['modulename_help'] = 'A SCORM package is a collection of files which are packaged according to an agreed standard for learning objects. The SCORM activity module enables SCORM, TCAPI, or AICC packages to be uploaded as a zip file and added to a course.
+
+Content is usually displayed over several pages, with navigation between the pages. There are various options for displaying content in a pop-up window, with a table of contents, with navigation buttons etc. SCORM activities generally include questions, with grades being recorded in the gradebook.
+
+SCORM activities may be used
+
+* For presenting multimedia content and animations
+* As an assessment tool';
+$string['scormtype_help'] = 'This setting determines how the package is included in the course. There are up to 4 options:
+
+* Uploaded package - Enables a SCORM/TCAPI package to be chosen via the file picker
+* External SCORM/TCAPI manifest - Enables an imsmanifest.xml/tincan.xml URL to be specified. Note: For SCORM, if the URL has a different domain name than your site, then "Downloaded package" is a better option, since otherwise grades are not saved.
+* Downloaded package - Enables a package URL to be specified. The package will be unzipped and saved locally, and updated when the external SCORM/TCAPI package is updated.
+* Local IMS content repository - Enables a package to be selected from within an IMS repository. Note: TCAPI not supported.
+* External AICC URL - this URL is the launch URL for a single AICC Activity.  A psuedo package will be constructed around this.';
+
+

@@ -1,4 +1,9 @@
 <?php
+/*
+ * Modified for addition of TCAPI support.
+ * Jamie Smith - jamie.g.smith@gmail.com
+ * Search for TCAPI for modification lines and documentation.
+ */
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -383,9 +388,21 @@ class mod_scorm_mod_form extends moodleform_mod {
                             $aiccfound = true;
                             break;
                         }
+				        /*
+				         * TCAPI Modification
+				         * Allow for tincan.xml manifest.
+				         */
+                        if ($info->pathname == 'tincan.xml') {
+                            $manifestpresent = true;
+                            break;
+                        }
+				        /*
+				         * End TCAPI Modification
+				         */
                     }
                     if (!$manifestpresent and !$aiccfound) {
-                        $errors['packagefile'] = 'Incorrect file package - missing imsmanifest.xml or AICC structure'; //TODO: localise
+                        //$errors['packagefile'] = 'Incorrect file package - missing imsmanifest.xml or AICC structure'; //TODO: localise
+                    	$errors['packagefile'] = 'Incorrect file package - missing imsmanifest.xml, tincan.xml, or AICC structure'; // TCAPI Modification
                     }
                 }
                 unlink($filename);
@@ -394,6 +411,22 @@ class mod_scorm_mod_form extends moodleform_mod {
         } else if ($type === SCORM_TYPE_EXTERNAL) {
             $reference = $data['packageurl'];
             // Syntax check.
+	        /*
+	         * TCAPI Modification
+	         * Allow for tincan.xml manifest.
+	         */
+            if (!preg_match('/(http:\/\/|https:\/\/|www).*\/imsmanifest.xml$/i', $reference)
+            	&& !preg_match('/(http:\/\/|https:\/\/|www).*\/tincan.xml$/i', $reference)) {
+            		$errors['packageurl'] = get_string('invalidurl', 'scorm');
+            } else {
+                // Availability check.
+                $result = scorm_check_url($reference);
+                if (is_string($result)) {
+                    $errors['packageurl'] = $result;
+                }
+            }
+            /*
+             * Replaced original
             if (!preg_match('/(http:\/\/|https:\/\/|www).*\/imsmanifest.xml$/i', $reference)) {
                 $errors['packageurl'] = get_string('invalidurl', 'scorm');
             } else {
@@ -403,6 +436,10 @@ class mod_scorm_mod_form extends moodleform_mod {
                     $errors['packageurl'] = $result;
                 }
             }
+            */
+	        /*
+	         * End TCAPI Modification
+	         */
 
         } else if ($type === 'packageurl') {
             $reference = $data['reference'];
