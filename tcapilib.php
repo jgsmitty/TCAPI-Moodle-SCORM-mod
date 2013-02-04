@@ -34,8 +34,11 @@ function scorm_tcapi_fetch_activity_state($params, $response) {
 	if (isset($params['stateId']) && $params['stateId'] == 'resume'
 		&& ($sco = scorm_get_sco($scoid)) && ($attempt = scorm_get_last_attempt($sco->scorm, $userid))) {
 	    if ($trackdata = scorm_get_tracks($scoid, $USER->id, $attempt)) {
-	    	// if the activity status is 'failed' and additional attempts are allowed, create a new attempt and return empty state data
-	        if (($trackdata->status == 'failed') && ($scorm = $DB->get_record_select('scorm','id = ?',array($sco->scorm)))) {
+	    	// if the activity status is 'failed',
+	    	// 'skip content structure page' is selected to 'always' and additional attempts are allowed, 
+	    	// create a new attempt and return empty state data
+	    	// We do this because the content structure page is the only way to generate a new SCORM attempt.
+	        if (($trackdata->status == 'failed') && ($scorm = $DB->get_record_select('scorm','id = ?',array($sco->scorm))) && ($scorm->skipview == 2)) {
 	        	if (($attempt < $scorm->maxattempt) || ($scorm->maxattempt == 0)) {
 	        		$newattempt = $attempt+1;
 	        		if (scorm_insert_track($USER->id, $scorm->id, $scoid, $newattempt, 'x.start.time', time()))
@@ -97,24 +100,31 @@ function scorm_tcapi_store_statement($params, $statementObject) {
 			
 		$statement = $statementObject->statement;
 		$statementRow = $statementObject->statementRow;
-		// check that the incoming statement refers to the sco identifier and not a child
+		// check that the incoming statement refers to the sco identifier
 		if (isset($statement->activity)) {
 			$sco_activity = $statement->activity;
-			if (!empty($statement->activity->grouping_id) && ($lrs_activity = $DB->get_record_select('tcapi_activity','id = ?',array($statement->activity->grouping_id))))
-				$sco_activity = $lrs_activity;
+			// TODO: Add support for interaction tracks for child results reporting.
+			//if (!empty($statement->activity->grouping_id) && ($lrs_activity = $DB->get_record_select('tcapi_activity','id = ?',array($statement->activity->grouping_id))))
+				//$sco_activity = $lrs_activity;
 			if ($sco->identifier == $sco_activity->activity_id) {
 				// check for existing cmi.core.lesson_status
 				// set default to 'incomplete'
 				// check statement->verb and set cmi.core.lesson_status as appropriate
 				$cmiCoreLessonStatus = (empty($usertrack->status) || $usertrack->status == 'notattempted') ? 'incomplete' : $usertrack->status;
 				if (in_array(strtolower($statementRow->verb),array('completed','passed','mastered','failed'))) {
-					$complStatus = (strtolower($statementRow->verb) !== 'failed') ? 'completed' : 'incomplete';
+					$cmiCoreLessonStatus = strtolower($statementRow->verb);
+					// Indicates activity status is complete
+					$complStatus = ($cmiCoreLessonStatus !== 'failed') ? 'completed' : 'incomplete';
 					if (!$attempt_complete)
 						scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.completion_status', $complStatus);
-					$cmiCoreLessonStatus = strtolower($statementRow->verb);
-					if (!$attempt_complete)
+					// Create/update track for cmi.core.lesson_status 
+					if (!$attempt_complete && in_array($cmiCoreLessonStatus,array('passed','failed','completed','incomplete')))
+						scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.core.lesson_status', $cmiCoreLessonStatus);
+					if (!$attempt_complete && in_array($cmiCoreLessonStatus,array('passed','failed')))
 						scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.success_status', $cmiCoreLessonStatus);
-					// check if any result was reported	
+					elseif (!isset($usertrack->{'cmi.success_status'}))
+						scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.success_status', 'unknown');
+					// check if any result was reported
 					if (isset($statementObject->resultRow)) {
 						$result = $statementObject->resultRow;
 						// if a duration was reported, add to any existing total_time
@@ -137,8 +147,21 @@ function scorm_tcapi_store_statement($params, $statementObject) {
 								scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.core.score.min', $score->min);
 							if (isset($score->max))
 								scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.core.score.max', $score->max);
-							if (isset($score->scaled))
-								scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.score.scaled', $score->scaled);
+							// if scaled is provided but no raw, calculate the raw as we need it for SCORM grades
+							// try to use the min/max if available. if not, use 0/100
+							if (isset($score->scaled)) {
+								if (!isset($score->raw)) {
+									$scoremin = (isset($score->min)) ? $score->min : 0;
+									$scoremax = (isset($score->max)) ? $score->max : 100;
+									$score->raw = ($score->scaled*($scoremax-$scoremin))+$scoremin;
+									scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.core.score.raw', $score->raw);
+									if (!isset($score->min))
+										scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.core.score.min', $scoremin);
+									if (!isset($score->max))
+										scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.core.score.max', $scoremax);
+								}
+								scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.score.scaled', $score->scaled);								
+							}
 						}
 						
 					}
@@ -146,8 +169,6 @@ function scorm_tcapi_store_statement($params, $statementObject) {
 				if ($attempt_complete)
 					return $statementObject->statementId;
 					
-				scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.core.lesson_status', $cmiCoreLessonStatus);
-				
 				// set cmi.core.exit to suspend if status is incomplete, else remove the track entry
 				if ($cmiCoreLessonStatus == 'incomplete')
 					scorm_insert_track($userid, $sco->scorm, $scoid, $attempt, 'cmi.core.exit', 'suspend');
