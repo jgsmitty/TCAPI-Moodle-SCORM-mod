@@ -41,7 +41,7 @@ function scorm_get_tincan_launch_params($scorm,$sco,$launchUrl) {
 	// Only provide if using the pluginfile.php method for delivery.
 	if ($pos = strpos($launchUrl, '/pluginfile.php')) {
 		$wscontenturl = substr($launchUrl, $pos, strlen($sco->launch)*-1);
-		$wscontenturl = str_ireplace('/pluginfile.php', '/webservice/pluginfile.php', $wscontenturl);
+		$wscontenturl = str_ireplace('/pluginfile.php', '/', $wscontenturl);
 		$launch_params['content_endpoint'] = TCAPI_CONTENT_ENDPOINT.$wscontenturl;
 		$launch_params['content_token'] = $token->token;
 	}
