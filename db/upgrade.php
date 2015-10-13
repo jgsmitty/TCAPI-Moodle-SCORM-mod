@@ -80,6 +80,33 @@ function xmldb_scorm_upgrade($oldversion) {
     // Put any upgrade step following this
 
 
+        if ($oldversion < 2015101301) {
+
+            // Define table scorm_scoes_item to be created.
+            $table = new xmldb_table('scorm_scoes_item');
+
+            // Adding fields to table scorm_scoes_item.
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('scorm_scoes_track_id', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+            $table->add_field('field_id', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+            $table->add_field('field_text', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+            $table->add_field('field_value', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+
+            // Adding keys to table scorm_scoes_item.
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+
+            // Conditionally launch create table for scorm_scoes_item.
+            if (!$dbman->table_exists($table)) {
+                $dbman->create_table($table);
+            }
+
+            // Scorm savepoint reached.
+            upgrade_mod_savepoint(true, 2015101301, 'scorm');
+        }
+
+
+
+
     return true;
 }
 
