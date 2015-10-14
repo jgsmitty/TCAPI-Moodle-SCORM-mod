@@ -538,11 +538,12 @@ function scorm_insert_track($userid, $scormid, $scoid, $attempt, $element, $valu
                                                             'scoid' => $scoid,
                                                             'attempt' => $attempt,
                                                             'element' => $element))) {
-        if ($element != 'x.start.time' ) { // Don't update x.start.time - keep the original value.
+        if ($element != 'x.start.time' ) { // Don't update x.start.time - keep the original value
             $track->value = $value;
             $track->timemodified = time();
             $DB->update_record('scorm_scoes_track', $track);
             $id = $track->id;
+            hlc_scoes_item($track, $value, $id); //HLC Change
         }
     } else {
         $track = new stdClass();
@@ -554,6 +555,7 @@ function scorm_insert_track($userid, $scormid, $scoid, $attempt, $element, $valu
         $track->value = $value;
         $track->timemodified = time();
         $id = $DB->insert_record('scorm_scoes_track', $track);
+        hlc_scoes_item($track, $value, $id); //HLC Change
     }
 
     if (strstr($element, '.score.raw') ||
@@ -565,6 +567,55 @@ function scorm_insert_track($userid, $scormid, $scoid, $attempt, $element, $valu
     }
 
     return $id;
+}
+
+/*
+ * HLC Change
+ * When suspend data is sent back to the database its stored in a difficult way for dataforms to compute.
+ * Here we grab the suspend data, and put it into a neater system so dataforms can generate reports.
+ * Only certain data is sent each time theres a call to /activites and the TCAPI end point - so we will have multiple entries for each course
+ *
+ * Fun fact - the data isn't human readable http://en-uk.articulate.com/support/storyline/suspend-data-isnt-human-readable so this is why we have this crazy stuff going on below
+ *
+ * $track
+ * scorm_scoes_track data
+ *
+ * $value
+ * the value being sent to the database
+ *
+ * $track_id
+ * mdl_scorm_scoes_track id
+ */
+function hlc_scoes_item($track, $value, $track_id) {
+    global $DB;
+
+    $data = json_decode($value);
+    $re = "/\\{(.*?)\\}/";
+    preg_match_all($re, $data->data, $matches);
+    //$matches[1] is an array of strings matched by the first parenthesized subpattern, and so on.
+    $suspendData = array_unique($matches[1]);
+    foreach($suspendData as $sd) {
+        $sdItem =  new stdClass();
+        $dta = explode(':',$sd);
+        // Possible data formats (Ideally this would compile into proper json but were using it with dataforms!)
+        // t3011field1:January = label > text
+        // t3011field1:Low:4 = label > text > value
+        $sdItem->scorm_scoes_track_id = $track_id;
+        $sdItem->field_id = (isset($dta[0])) ? trim($dta[0]) : '';
+        $sdItem->field_text = (isset($dta[1])) ? trim($dta[1]) : '';
+        $sdItem->field_value = (isset($dta[2])) ? trim($dta[2]) : '';
+
+
+        $items = $DB->get_record('scorm_scoes_item', array('scorm_scoes_track_id' => $track_id, 'field_id' => $sdItem->field_id));
+        if($items) {
+            $sdItem->id = $items->id;
+            $id = $DB->update_record('scorm_scoes_item', $sdItem);
+        }
+        else {
+            $id = $DB->insert_record('scorm_scoes_item', $sdItem);
+        }
+    }
+
 }
 
 /**

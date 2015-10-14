@@ -23,6 +23,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$module->version   = 2015101301;       // The current module version (Date: YYYYMMDDXX)
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->version   = 2012112900;                 // The current plugin version (Date: YYYYMMDDXX)

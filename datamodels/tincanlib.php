@@ -96,7 +96,7 @@ function scorm_get_tincan_manifest($blocks, $scoes) {
                     }
                 break;
                 case 'ACTIVITY':
-                	if (empty($course_id) && isset($block['attrs']['TYPE']) && $block['attrs']['TYPE'] == 'course') {
+                	if (empty($course_id) && isset($block['attrs']['TYPE']) && strpos($block['attrs']['TYPE'],'course') > 0) {
                 		
 	                    $org = $parent = array_pop($parents);
 	                    array_push($parents, $parent);
